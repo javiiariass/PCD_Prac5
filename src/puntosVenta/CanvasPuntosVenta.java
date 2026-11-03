@@ -8,6 +8,8 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Image;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
@@ -15,15 +17,11 @@ import java.awt.Image;
  */
 public class CanvasPuntosVenta extends java.awt.Panel {
 
-    private int numTerminalEfectivo;
-    private int numTerminalTarjeta;
-    private int libresEfectivo = 2;
-    private int libresTarjeta = 2;
-    private int efectivosEsperando = 0;
+    private final List<String> cola = new ArrayList<>();
+    // 0 y 1: Efectivo. 2 y 3: Tarjeta.
+    private final String[] terminales = new String[4];
+    private final List<String> fuera = new ArrayList<>();
 
-    /**
-     * Creates new form CanvasPuntosVenta
-     */
     public CanvasPuntosVenta() {
         initComponents();
     }
@@ -31,8 +29,42 @@ public class CanvasPuntosVenta extends java.awt.Panel {
     public CanvasPuntosVenta(int ancho, int alto, int numTerminalEfectivos, int numTerminalTarjetas) {
         this.setSize(ancho, alto);
         this.setBackground(Color.white);
-        this.numTerminalEfectivo = numTerminalEfectivos;
-        this.numTerminalTarjeta = numTerminalTarjetas;
+    }
+
+    public synchronized void entraCola(String id) {
+        cola.add(id);
+        repaint();
+    }
+
+    public synchronized void entraTerminal(String id, char tipoTerminal) {
+        cola.remove(id);
+        if (tipoTerminal == 'E') {
+            if (terminales[0] == null) {
+                terminales[0] = id;
+            } else {
+                terminales[1] = id;
+            }
+        } else {
+            if (terminales[2] == null) {
+                terminales[2] = id;
+            } else {
+                terminales[3] = id;
+            }
+        }
+        repaint();
+    }
+
+    public synchronized void saleTerminal(String id) {
+        for (int i = 0; i < terminales.length; i++) {
+            if (id.equals(terminales[i])) {
+                terminales[i] = null;
+                fuera.add(id);
+                if (fuera.size() > 10) {
+                    fuera.remove(0);
+                }
+                break;
+            }
+        }
         repaint();
     }
 
@@ -47,43 +79,142 @@ public class CanvasPuntosVenta extends java.awt.Panel {
         setLayout(new java.awt.BorderLayout());
     }// </editor-fold>//GEN-END:initComponents
 
-    /**
-     * para actualizar variables locales
-     */
-    public void representa(int libresEfectivo, int libresTarjeta) {
-        this.libresEfectivo = libresEfectivo;
-        this.libresTarjeta = libresTarjeta;
-        repaint();
-    }
-
     @Override
     public void paint(Graphics g) {
+        if (getWidth() <= 0 || getHeight() <= 0) return;
 
-        // Buffer
         Image offscreen = createImage(getWidth(), getHeight());
         Graphics og = offscreen.getGraphics();
 
-        Font f1 = new Font("Helvetica", Font.ITALIC + Font.BOLD, 20);
+        // Fondo
+        og.setColor(new Color(245, 245, 245));
+        og.fillRect(0, 0, getWidth(), getHeight());
 
-        // pintar terminales
-        og.setColor(Color.black);
-        og.setFont(f1);
-        System.out.println("**********" + numTerminalEfectivo);
-        for (int i = 0; i < (numTerminalEfectivo + numTerminalTarjeta); i++) {
-            og.drawString("Terminal " + i, 0, 0);
+        Font fTitulo = new Font("Arial", Font.BOLD, 18);
+        Font fSub = new Font("Arial", Font.BOLD, 13);
+        Font fText = new Font("Arial", Font.BOLD, 12);
 
+        // Título
+        og.setColor(Color.DARK_GRAY);
+        og.setFont(fTitulo);
+        og.drawString("PUNTOS DE VENTA", 310, 30);
+
+        // Copia sincronizada para pintar sin excepciones
+        List<String> copiaCola;
+        String[] copiaTerm = new String[4];
+        List<String> copiaFuera;
+        synchronized (this) {
+            copiaCola = new ArrayList<>(cola);
+            System.arraycopy(terminales, 0, copiaTerm, 0, terminales.length);
+            copiaFuera = new ArrayList<>(fuera);
         }
 
-        og.drawImage(offscreen, 0, 0, null);
-        // volcar a pantalla
-        g.drawImage(offscreen, getHeight(), getWidth(), null);
+        // 1. COLA (Izquierda)
+        og.setFont(fSub);
+        og.setColor(Color.BLACK);
+        og.drawString("Cola (" + copiaCola.size() + ")", 30, 55);
+
+        og.setColor(Color.WHITE);
+        og.fillRect(20, 65, 160, 290);
+        og.setColor(Color.GRAY);
+        og.drawRect(20, 65, 160, 290);
+
+        og.setFont(fText);
+        int y = 85;
+        int maxCola = Math.min(copiaCola.size(), 11);
+        for (int i = 0; i < maxCola; i++) {
+            String id = copiaCola.get(i);
+            if (id.startsWith("E")) {
+                og.setColor(new Color(0, 130, 0));
+                og.drawString("Efectivo " + id, 30, y);
+            } else {
+                og.setColor(new Color(20, 50, 180));
+                og.drawString("Tarjeta " + id, 30, y);
+            }
+            y += 22;
+        }
+        if (copiaCola.size() > 11) {
+            og.setColor(Color.GRAY);
+            og.drawString("... (" + (copiaCola.size() - 11) + " más)", 30, y);
+        }
+
+        // 2. TERMINALES (Centro)
+        og.setFont(fSub);
+        og.setColor(Color.BLACK);
+        og.drawString("Terminales", 345, 55);
+
+        String[] nombres = {
+            "Terminal 1 (Efectivo)",
+            "Terminal 2 (Efectivo)",
+            "Terminal 3 (Tarjeta)",
+            "Terminal 4 (Tarjeta)"
+        };
+        int[] posX = {200, 390, 200, 390};
+        int[] posY = {70, 70, 210, 210};
+
+        for (int i = 0; i < 4; i++) {
+            int tx = posX[i];
+            int ty = posY[i];
+            String ocupante = copiaTerm[i];
+
+            og.setColor(Color.WHITE);
+            og.fillRect(tx, ty, 175, 120);
+            og.setColor(Color.GRAY);
+            og.drawRect(tx, ty, 175, 120);
+
+            og.setColor(Color.BLACK);
+            og.setFont(fText);
+            og.drawString(nombres[i], tx + 10, ty + 25);
+
+            if (ocupante == null) {
+                og.setColor(Color.LIGHT_GRAY);
+                og.setFont(fSub);
+                og.drawString("[ LIBRE ]", tx + 55, ty + 70);
+            } else {
+                og.setFont(fTitulo);
+                if (ocupante.startsWith("E")) {
+                    og.setColor(new Color(0, 130, 0));
+                    og.drawString("Efectivo " + ocupante, tx + 10, ty + 70);
+                } else {
+                    og.setColor(new Color(20, 50, 180));
+                    og.drawString("Tarjeta " + ocupante, tx + 10, ty + 70);
+                }
+            }
+        }
+
+        // 3. FUERA / SALIDA (Derecha)
+        og.setFont(fSub);
+        og.setColor(Color.BLACK);
+        og.drawString("Fuera / Salida", 600, 55);
+
+        og.setColor(Color.WHITE);
+        og.fillRect(590, 65, 170, 290);
+        og.setColor(Color.GRAY);
+        og.drawRect(590, 65, 170, 290);
+
+        og.setFont(fText);
+        y = 85;
+        int maxFuera = Math.min(copiaFuera.size(), 11);
+        for (int i = 0; i < maxFuera; i++) {
+            String id = copiaFuera.get(i);
+            if (id.startsWith("E")) {
+                og.setColor(new Color(0, 130, 0));
+                og.drawString("Efectivo " + id, 605, y);
+            } else {
+                og.setColor(new Color(20, 50, 180));
+                og.drawString("Tarjeta " + id, 605, y);
+            }
+            y += 22;
+        }
+
+        // Volcado a pantalla
+        g.drawImage(offscreen, 0, 0, null);
     }
 
     @Override
     public void update(Graphics g) {
         paint(g);
     }
-
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     // End of variables declaration//GEN-END:variables
