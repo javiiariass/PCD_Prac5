@@ -17,10 +17,13 @@ public class Generador extends java.awt.Frame {
     private final static int[] RANGO_TIEMPO_LANZAR_HILOS = {1, 2};
     private final static int NUM_HILOS_LANZAR = 50;
     private final static int PORCENTAJE_HILOS_EFECTIVO = 3; // rango 1-10
-    private final static int[] ANCHO_ALTO = {800, 400};
+    private final static int[] ANCHO_ALTO = {800, 500};
     private final static int NUM_TERMINAL_TARJETA = 2;
     private final static int NUM_TERMINAL_EFECTIVO = 2;
 
+    private int contadorIdBotones = 0;
+    static Random rnd;
+    static PuntosVenta recurso;
     /**
      * Creates new form Gen
      */
@@ -36,11 +39,27 @@ public class Generador extends java.awt.Frame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        panel1 = new java.awt.Panel();
+        botonTarjeta = new java.awt.Button();
+        botonEfectivo = new java.awt.Button();
+
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
                 exitForm(evt);
             }
         });
+
+        botonTarjeta.setLabel("botonTarjeta");
+        botonTarjeta.addActionListener(this::botonTarjetaLanzaHilo);
+        panel1.add(botonTarjeta);
+
+        botonEfectivo.setActionCommand("botonEfectivo");
+        botonEfectivo.setLabel("botonEfectivo");
+        botonEfectivo.addActionListener(this::botonEfectivoLanzaHilo);
+        panel1.add(botonEfectivo);
+        botonEfectivo.getAccessibleContext().setAccessibleName("botonEfectivo");
+
+        add(panel1, java.awt.BorderLayout.SOUTH);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -52,21 +71,41 @@ public class Generador extends java.awt.Frame {
         System.exit(0);
     }//GEN-LAST:event_exitForm
 
+    private void botonTarjetaLanzaHilo(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botonTarjetaLanzaHilo
+        // TODO add your handling code here:
+         Thread hilo = new Thread(
+                        new Tarjeta("T-BTN " + contadorIdBotones, recurso, rnd, RANGO_TIEMPO_TARJETA));
+         contadorIdBotones++;
+         hilo.start();
+    }//GEN-LAST:event_botonTarjetaLanzaHilo
+
+    private void botonEfectivoLanzaHilo(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botonEfectivoLanzaHilo
+        // TODO add your handling code here:
+        Thread hilo = new Efectivo("E-BTN " + contadorIdBotones, recurso, rnd, RANGO_TIEMPO_EFECTIVO);
+        contadorIdBotones++;
+        hilo.start();
+    }//GEN-LAST:event_botonEfectivoLanzaHilo
+
     /**
      * @param args the command line arguments
      */
     public static void main(String args[]) throws InterruptedException {
-        Random rnd = new Random(System.currentTimeMillis());
-        PuntosVenta recurso = new PuntosVenta();
+        rnd = new Random(System.currentTimeMillis());
+
+        // instanciar canvas
+        CanvasPuntosVenta canvitas = new CanvasPuntosVenta(ANCHO_ALTO[0], ANCHO_ALTO[1],
+                NUM_TERMINAL_EFECTIVO, NUM_TERMINAL_TARJETA);
+
+        // instanciar recurso con el canvas
+        recurso = new PuntosVenta(canvitas);
+
         // instanciar frame
         Generador frame = new Generador();
         frame.setSize(ANCHO_ALTO[0], ANCHO_ALTO[1]);
-        // instanciar canvas
-        CanvasPuntosVenta canvitas = new CanvasPuntosVenta(ANCHO_ALTO[0],ANCHO_ALTO[1],
-                NUM_TERMINAL_EFECTIVO, NUM_TERMINAL_TARJETA);
+        frame.setTitle("Práctica 5 - Puntos de Venta");
+
         // adjuntar a frame
         frame.add(canvitas);
-        // visible
         frame.setVisible(true);
 
         // *********************** HILOS ***********************
@@ -75,7 +114,7 @@ public class Generador extends java.awt.Frame {
         for (int i = 0; i < NUM_HILOS_LANZAR; i++) {
             Thread.sleep(rnd.nextInt(
                     RANGO_TIEMPO_LANZAR_HILOS[0],
-                    RANGO_TIEMPO_LANZAR_HILOS[1] + 1));
+                    RANGO_TIEMPO_LANZAR_HILOS[1] + 1) * 1000);
 
             if (rnd.nextInt(10) < PORCENTAJE_HILOS_EFECTIVO) {
                 hilos[i] = new Efectivo("E" + i, recurso, rnd, RANGO_TIEMPO_EFECTIVO);
@@ -83,18 +122,19 @@ public class Generador extends java.awt.Frame {
                 hilos[i] = new Thread(
                         new Tarjeta("T" + i, recurso, rnd, RANGO_TIEMPO_TARJETA));
             }
-        }
-
-        for (int i = 0; i < NUM_HILOS_LANZAR; i++) {
             hilos[i].start();
         }
 
         for (int i = 0; i < NUM_HILOS_LANZAR; i++) {
-            hilos[i].join();
+            if (hilos[i] != null) {
+                hilos[i].join();
+            }
         }
     }
 
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private java.awt.Button botonEfectivo;
+    private java.awt.Button botonTarjeta;
+    private java.awt.Panel panel1;
     // End of variables declaration//GEN-END:variables
 }
