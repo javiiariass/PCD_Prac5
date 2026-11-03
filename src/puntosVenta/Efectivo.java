@@ -27,19 +27,16 @@ public class Efectivo extends Thread {
 
     @Override
     public void run() {
-        // 
         this.setName(idHilo);
         System.out.println("Hilo " + idHilo + " empezando...");
 
         try {
-            // entrar
             System.out.println("Hilo " + idHilo + " entrando...");
             recurso.entraEfectivo();
 
             // Emular pago esperando
             sleep(rnd.nextInt(rangoEspera[0], rangoEspera[1] + 1) * 1000);
 
-            // salir
             System.out.println("Hilo " + idHilo + " saliendo...");
             recurso.saleEfectivo();
 

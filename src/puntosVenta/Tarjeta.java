@@ -28,24 +28,21 @@ public class Tarjeta implements Runnable {
 
     @Override
     public void run() {
-        // 
         Thread.currentThread().setName(idHilo);
         System.out.println("Hilo " + idHilo + " empezando...");
 
         try {
-            // entrar
             System.out.println("Hilo " + idHilo + " entrando...");
-            recurso.entraEfectivo();
+            char tipoTerminal = recurso.entraTarjeta();
 
             // Emular pago esperando
             sleep(rnd.nextInt(rangoEspera[0], rangoEspera[1] + 1) * 1000);
 
-            // salir
             System.out.println("Hilo " + idHilo + " saliendo...");
-            recurso.saleEfectivo();
+            recurso.saleTarjeta(tipoTerminal);
 
         } catch (InterruptedException ex) {
-            System.getLogger(Efectivo.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+            System.getLogger(Tarjeta.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
         }
 
     }
